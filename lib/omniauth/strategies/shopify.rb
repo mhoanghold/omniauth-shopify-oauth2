@@ -16,6 +16,7 @@ module OmniAuth
 
       option :callback_url
       option :myshopify_domain, 'myshopify.com'
+      option :per_user_permissions, true
 
       option :setup, proc { |env|
         request = Rack::Request.new(env)
@@ -53,6 +54,10 @@ module OmniAuth
         OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, secret, encoded_params)
       end
 
+      def valid_permissions?
+        access_token && (options[:per_user_permissions] == !access_token['acts_as_user'].nil?)
+      end
+
       def fix_https
         options[:client_options][:site].gsub!(/\Ahttp\:/, 'https:')
       end
@@ -73,12 +78,15 @@ module OmniAuth
       def callback_phase
         return fail!(:invalid_site) unless valid_site?
         return fail!(:invalid_signature) unless valid_signature?
-        super
+        super.tap do
+          return fail!(:invalid_permissions) if env['omniauth.error'].nil? && !valid_permissions?
+        end
       end
 
       def authorize_params
         super.tap do |params|
           params[:scope] ||= DEFAULT_SCOPE
+          params[:auth_type] = 'user' if options[:per_user_permissions]
         end
       end
 
