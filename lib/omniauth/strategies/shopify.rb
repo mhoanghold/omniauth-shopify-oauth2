@@ -49,8 +49,7 @@ module OmniAuth
       def valid_scope?(token)
         params = options.authorize_params.merge(options_for("authorize"))
         return false unless token && params[:scope] && token['scope']
-        expected_scope = params[:scope].split(',').map(&:strip).reject(&:empty?).uniq.sort
-        (expected_scope == token['scope'].split(',').sort)
+        (params[:scope].delete(' ').split(',').sort == token['scope'].delete(' ').split(',').sort)
       end
 
       def self.encoded_params_for_signature(params)
